@@ -6,17 +6,30 @@ var del = require('del');
 var source = require('vinyl-source-stream');
 var buffer = require('vinyl-buffer');
 var browserify = require('browserify');
+var watchify = require('watchify');
 var pushState = require('connect-history-api-fallback');
 var browserSync = require('browser-sync');
 var reload = browserSync.reload;
 
-function bundle(bundler) {
+function getBundler(options) {
+  var bundlerOptions = {
+    entries: ['./client/app.js'],
+    debug: true,
+    extensions: ['.jsx']
+  };
+
+  var bundler = browserify(extend(bundlerOptions, options));
+
   // Browserify transforms
   bundler
     .transform('reactify')
     .transform('strictify')
     .transform('brfs');
 
+  return bundler;
+}
+
+function bundle(bundler) {
   return bundler
     .bundle()
     .pipe(source('app.js'))
@@ -60,11 +73,7 @@ gulp.task('clean', function (callback) {
 // gulp.task('codestyle');
 
 gulp.task('javascript', function () {
-  var bundler = browserify({
-    entries: ['./client/app.js'],
-    debug: true,
-    extensions: ['.jsx']
-  });
+  var bundler = getBundler();
 
   return bundle(bundler);
 });
@@ -93,6 +102,11 @@ gulp.task('fonts', function () {
 
 // });
 
+gulp.task('html', function () {
+  return gulp.src('./client/index.html')
+    .pipe(gulp.dest('./dist'));
+});
+
 gulp.task('revision-replace', function () {
   // Do not use require here because it will cache the contents.
   var manifest = JSON.parse(fs.readFileSync(__dirname + '/dist/js-rev-manifest.json'));
@@ -102,11 +116,11 @@ gulp.task('revision-replace', function () {
     return stream.pipe($.replace(key, manifest[key]));
   }
 
-  return Object.keys(manifest).reduce(replace, gulp.src(['./client/index.html']))
+  return Object.keys(manifest).reduce(replace, gulp.src('./dist/index.html'))
     .pipe(gulp.dest('./dist'));
 });
 
-gulp.task('build', gulp.series('clean', gulp.parallel('javascript', 'css', 'fonts'), 'revision-replace'));
+gulp.task('build', gulp.series('clean', gulp.parallel('javascript', 'css', 'fonts', 'html'), 'revision-replace'));
 
 // TODO
 // gulp.task('test');
@@ -119,7 +133,27 @@ gulp.task('serve', gulp.series('build', function () {
     }
   });
 
-  gulp.watch(['./client/**/*.@(js|jsx|less|html)'], gulp.series('build', reload));
+  function clean() {
+    var args = Array.prototype.slice.call(arguments);
+
+    return function (callback) {
+      del.apply(null, args.concat(callback));
+    }
+  }
+
+  gulp.watch('./dist/*-rev-manifest.json', gulp.series('html', 'revision-replace', reload));
+  gulp.watch('./client/**/*.less', gulp.series(clean('./dist/*.css?(.map)'), 'css', 'html', 'revision-replace', reload));
+  gulp.watch('./client/index.html', gulp.series('html', 'revision-replace', reload));
+
+  var bundler = watchify(getBundler(watchify.args));
+
+  bundler.on('update', function () {
+    $.util.log($.util.colors.magenta('Updating javascript bundle'));
+    del('./dist/*.js?(.map)');
+    bundle(bundler);
+  });
+
+  return bundler.bundle();
 }));
 
 gulp.task('default', gulp.series('build'));
