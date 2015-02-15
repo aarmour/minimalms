@@ -6,12 +6,16 @@ var del = require('del');
 var source = require('vinyl-source-stream');
 var buffer = require('vinyl-buffer');
 var browserify = require('browserify');
+var pushState = require('connect-history-api-fallback');
 var browserSync = require('browser-sync');
 var reload = browserSync.reload;
 
 function bundle(bundler) {
   // Browserify transforms
-  bundler.transform('strictify');
+  bundler
+    .transform('reactify')
+    .transform('strictify')
+    .transform('brfs');
 
   return bundler
     .bundle()
@@ -28,6 +32,26 @@ function bundle(bundler) {
     .pipe(gulp.dest('./dist'));
 }
 
+gulp.task('iconfont', function () {
+  return gulp.src('./node_modules/material-design-icons/**/svg/production/*48px.svg')
+    .pipe($.iconfont({
+      fontName: 'md-icons',
+      normalize: true
+    }))
+      .on('codepoints', function (codepoints) {
+        var options = {
+          glyphs: codepoints,
+          generatedWarning: 'WARNING: this file is generated automatically. Changes made here will be overwritten.'
+        };
+
+        gulp.src('./client/less/md-icons.tpl')
+          .pipe($.consolidate('lodash', options))
+          .pipe($.rename('md-icons.less'))
+          .pipe(gulp.dest('./client/less'));
+      })
+    .pipe(gulp.dest('./client/fonts'));
+});
+
 gulp.task('clean', function (callback) {
   del(['dist'], callback);
 });
@@ -38,17 +62,19 @@ gulp.task('clean', function (callback) {
 gulp.task('javascript', function () {
   var bundler = browserify({
     entries: ['./client/app.js'],
-    debug: true
+    debug: true,
+    extensions: ['.jsx']
   });
 
   return bundle(bundler);
 });
 
 gulp.task('css', function () {
-  return gulp.src('./client/app.less')
+  return gulp.src('./client/less/app.less')
     .pipe($.sourcemaps.init())
     .pipe($.less())
       // Transformations
+      .pipe($.autoprefixer({cascade: false, browsers: ['last 2 versions']}))
       .pipe($.minifyCss())
     .pipe($.rev())
     .pipe($.sourcemaps.write('./'))
@@ -57,6 +83,15 @@ gulp.task('css', function () {
     .pipe($.rename('css-rev-manifest.json'))
     .pipe(gulp.dest('./dist'));
 });
+
+gulp.task('fonts', function () {
+  return gulp.src('./client/fonts/*.?(eot|svg|ttf|woff)')
+    .pipe(gulp.dest('dist/fonts'));
+});
+
+// gulp.task('images', function () {
+
+// });
 
 gulp.task('revision-replace', function () {
   // Do not use require here because it will cache the contents.
@@ -71,7 +106,7 @@ gulp.task('revision-replace', function () {
     .pipe(gulp.dest('./dist'));
 });
 
-gulp.task('build', gulp.series('clean', gulp.parallel('javascript', 'css'), 'revision-replace'));
+gulp.task('build', gulp.series('clean', gulp.parallel('javascript', 'css', 'fonts'), 'revision-replace'));
 
 // TODO
 // gulp.task('test');
@@ -79,11 +114,12 @@ gulp.task('build', gulp.series('clean', gulp.parallel('javascript', 'css'), 'rev
 gulp.task('serve', gulp.series('build', function () {
   browserSync({
     server: {
-      baseDir: 'dist'
+      baseDir: 'dist',
+      middleware: pushState
     }
   });
 
-  gulp.watch(['./client/**/*.@(js|less|html)'], gulp.series('build', reload));
+  gulp.watch(['./client/**/*.@(js|jsx|less|html)'], gulp.series('build', reload));
 }));
 
 gulp.task('default', gulp.series('build'));
