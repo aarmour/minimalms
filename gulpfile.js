@@ -1,3 +1,4 @@
+var _ = require('lodash');
 var gulp = require('gulp');
 var $ = require('gulp-load-plugins')();
 var extend = require('util')._extend;
@@ -36,8 +37,8 @@ function bundle(bundler) {
     .pipe(buffer())
     .pipe($.sourcemaps.init({loadMaps: true}))
       // Transformations
-      .pipe($.uglify())
-    .pipe($.rev())
+      // .pipe($.uglify({compress: false}))
+      .pipe($.rev())
     .pipe($.sourcemaps.write('./'))
     .pipe(gulp.dest('./dist'))
     .pipe($.rev.manifest())
@@ -126,10 +127,28 @@ gulp.task('build', gulp.series('clean', gulp.parallel('javascript', 'css', 'font
 // gulp.task('test');
 
 gulp.task('serve', gulp.series('build', function () {
+  var clientConfig = require('./client-configuration');
+
   browserSync({
     server: {
       baseDir: 'dist',
-      middleware: pushState
+      proxy: 'minimalms.org',
+      middleware: [
+        pushState,
+        require('cookies').connect(),
+        require('csurf')({ cookie: { httpOnly: true } }),
+        function (request, response, next) {
+          request.path = require('url').parse(request.url).path;
+          next();
+        },
+        function (request, response, next) {
+          if (request.path === '/index.html') {
+            var config = _.extend({}, clientConfig, { csrf: request.csrfToken() });
+            response.cookies.set('config', encodeURIComponent(JSON.stringify(config)), { httpOnly: false });
+          }
+          next();
+        },
+      ]
     }
   });
 

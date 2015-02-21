@@ -24,6 +24,12 @@ module.exports = View.extend({
     // Add the head content
     document.head.appendChild(domify(fs.readFileSync(__dirname + '/templates/head.html', 'utf8')));
 
+    var gplus = document.createElement('script');
+    gplus.setAttribute('src', 'https://apis.google.com/js/client:platform.js');
+    gplus.async = true;
+    gplus.defer = true;
+    document.head.appendChild(gplus);
+
     this.renderWithTemplate();
 
     document.body.insertBefore(this.el, document.body.firstChild);
