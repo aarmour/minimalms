@@ -2,6 +2,7 @@ var domReady = require('domready');
 var React = require('react');
 var injectTapEventPlugin = require('react-tap-event-plugin');
 var router = require('./router');
+var auth = require('./auth');
 var ContainerView = require('./pages/container');
 
 var app = module.exports = {
@@ -17,6 +18,8 @@ var app = module.exports = {
     injectTapEventPlugin();
 
     domReady(function () {
+      auth(window, window.gapi);
+
       var containerView = new ContainerView();
 
       containerView.render();

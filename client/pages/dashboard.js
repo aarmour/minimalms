@@ -13,7 +13,7 @@ module.exports = View.extend({
     this.renderWithTemplate(this);
 
     setTimeout(function () {
-      React.render(React.createElement(PrimaryNav), self.el);
+      self.primaryNav = React.render(React.createElement(PrimaryNav), self.el);
     }, 0);
 
     return this;

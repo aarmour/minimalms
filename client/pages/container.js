@@ -6,7 +6,7 @@ var domify = require('domify');
 var View = require('ampersand-view');
 var ViewSwitcher = require('ampersand-view-switcher');
 var router = require('../router');
-var navigate = router.history.navigate;
+var navigate = router.history.navigate.bind(router.history);
 
 module.exports = View.extend({
   template: '<div data-hook="container"></div>',
@@ -24,19 +24,11 @@ module.exports = View.extend({
     // Add the head content
     document.head.appendChild(domify(fs.readFileSync(__dirname + '/templates/head.html', 'utf8')));
 
-    var gplus = document.createElement('script');
-    gplus.setAttribute('src', 'https://apis.google.com/js/client:platform.js');
-    gplus.async = true;
-    gplus.defer = true;
-    document.head.appendChild(gplus);
-
     this.renderWithTemplate();
 
     document.body.insertBefore(this.el, document.body.firstChild);
 
-    this.pageSwitcher = new ViewSwitcher(this.queryByHook('container'), {
-
-    });
+    this.pageSwitcher = new ViewSwitcher(this.queryByHook('container'));
 
     return this;
   },

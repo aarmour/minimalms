@@ -1,24 +1,18 @@
 var React = require('react');
 var material = require('material-ui');
 var RaisedButton = material.RaisedButton;
+var auth = require('../auth');
 
 module.exports = React.createClass({
+
   handleClick: function (event) {
-    gapi.auth.signIn({
-      clientid: this.props.clientid,
-      scope: this.props.scope,
-      cookiepolicy: 'single_host_origin',
-      callback: this.props.callback
-    });
+    auth.signIn();
   },
+
   render: function () {
     return (
-      <RaisedButton label="Sign In With Google+"
-                    primary={true}
-                    clientid={this.props.clientid}
-                    scope={this.props.scope}
-                    callback={this.props.callback}
-                    onClick={this.handleClick} />
+      <RaisedButton label="Sign In With Google+" primary={true} onClick={this.handleClick} />
     );
   }
+
 });

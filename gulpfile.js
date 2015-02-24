@@ -136,14 +136,15 @@ gulp.task('serve', gulp.series('build', function () {
       middleware: [
         pushState,
         require('cookies').connect(),
-        require('csurf')({ cookie: { httpOnly: true } }),
+        // require('csurf')({ cookie: { httpOnly: true } }),
         function (request, response, next) {
           request.path = require('url').parse(request.url).path;
           next();
         },
         function (request, response, next) {
           if (request.path === '/index.html') {
-            var config = _.extend({}, clientConfig, { csrf: request.csrfToken() });
+            // var config = _.extend({}, clientConfig, { csrf: request.csrfToken() });
+            var config = clientConfig;
             response.cookies.set('config', encodeURIComponent(JSON.stringify(config)), { httpOnly: false });
           }
           next();
